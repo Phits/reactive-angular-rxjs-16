@@ -1,31 +1,35 @@
-import {AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, Inject, OnInit, ViewChild, ViewEncapsulation} from '@angular/core';
+import { AfterViewInit, Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from "@angular/material/dialog";
-import {Course} from "../model/course";
-import {FormBuilder, Validators, FormGroup} from "@angular/forms";
+import { Course } from "../model/course";
+import { FormBuilder, Validators, FormGroup } from "@angular/forms";
 import * as moment from 'moment';
 import { CoursesService } from '../services/courses.service';
 import { LoadingService } from '../loading/loading.service';
+import { MessageService } from '../messages/messages.service';
+import { catchError } from 'rxjs/operators';
+import { throwError } from 'rxjs';
+import { CoursesStore } from '../services/courses.store';
 
 @Component({
     selector: 'course-dialog',
     templateUrl: './course-dialog.component.html',
     styleUrls: ['./course-dialog.component.css'],
     providers: [
-        LoadingService
+        LoadingService,
+        MessageService
     ]
 })
 export class CourseDialogComponent implements AfterViewInit {
 
     form: FormGroup;
-
-    course:Course;
+    course: Course;
 
     constructor(
         private fb: FormBuilder,
         private dialogRef: MatDialogRef<CourseDialogComponent>,
-        @Inject(MAT_DIALOG_DATA) course:Course,
-        private coursesService: CoursesService,
-        private loadingService: LoadingService) {
+        @Inject(MAT_DIALOG_DATA) course: Course,
+        private coursesStore: CoursesStore,
+        private messagesService: MessageService) {
 
         this.course = course;
 
@@ -33,7 +37,7 @@ export class CourseDialogComponent implements AfterViewInit {
             description: [course.description, Validators.required],
             category: [course.category, Validators.required],
             releasedAt: [moment(), Validators.required],
-            longDescription: [course.longDescription,Validators.required]
+            longDescription: [course.longDescription, Validators.required]
         });
 
     }
@@ -43,18 +47,12 @@ export class CourseDialogComponent implements AfterViewInit {
     }
 
     save() {
+        const changes = this.form.value;
 
-      const changes = this.form.value;
+        this.coursesStore.saveCourse(this.course.id, changes)
+            .subscribe();
 
-      const saveCourses$ = this.coursesService.saveCourse(this.course.id, changes);
-
-      this.loadingService.showLoaderUntilCompleted(saveCourses$)
-      .subscribe(
-        val => {
-            this.dialogRef.close(val);
-        }
-      )
-
+        this.dialogRef.close(changes);
     }
 
     close() {
